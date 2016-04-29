@@ -1,0 +1,31 @@
+{
+  "name": "django-rest-formly",
+  "homepage": "https://github.com/benzid-wael/bower-django-rest-formly",
+  "authors": [
+    "Wael BEN ZID <benzid.wael@hotmail.fr>"
+  ],
+  "description": "Convert Django REST framework metadata to angular-formly scheme.",
+  "main": "./django-rest-formly.js",
+  "moduleType": [],
+  "keywords": [
+    "django",
+    "rest",
+    "framework",
+    "django-rest",
+    "django-rest-framework",
+    "angular",
+    "angularjs",
+    "formly",
+    "forms",
+    "angular-formly",
+    "django-rest-formly"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
