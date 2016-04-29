@@ -1,5 +1,6 @@
 {
   "name": "django-rest-formly",
+  "version": "0.0.2",
   "homepage": "https://github.com/benzid-wael/bower-django-rest-formly",
   "authors": [
     "Wael BEN ZID <benzid.wael@hotmail.fr>"
