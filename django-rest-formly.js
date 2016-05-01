@@ -10,6 +10,15 @@ var djnagoRestFieldLookup = [
         }
     },
     function (djangoRestMeta) {
+        if (djangoRestMeta.type == "regex") {
+            if (djangoRestMeta.pattern == undefined) {
+                console.warn('regex field should define pattern property. \'' + djangoRestMeta.name + '\' field will be treated as string.');
+                return "string";
+            }
+            return "regex";
+        }
+    },
+    function (djangoRestMeta) {
         if (djangoRestMeta.type == "string" && djangoRestMeta.max_length == undefined) {
             return "text";
         }
@@ -57,21 +66,29 @@ var DjangoRestConfig = (function () {
     };
     DjangoRestConfig._fieldMapping = {
         "boolean": fields.BooleanField,
-        "email": fields.EmailField,
-        "hidden": fields.HiddenField,
-        "password": fields.PasswordField,
+        "integer": fields.NumericField,
+        "decimal": fields.DecimalField,
+        "float": fields.FloatField,
         "string": fields.CharField,
         "text": fields.TextField,
+        "hidden": fields.HiddenField,
+        "password": fields.PasswordField,
         "select": fields.SelectField,
-        "radio": fields.RadioField,
         "choice": fields.SelectField,
-        "integer": fields.NumericField
+        "radio": fields.RadioField,
+        "regex": fields.RegexField,
+        "email": fields.EmailField,
+        "url": fields.URLField,
+        "ipaddress": fields.IPAddressField,
+        "date": fields.DateField,
+        "datetime": fields.DateTimeField,
+        "time": fields.TimeField,
     };
     return DjangoRestConfig;
 })();
 exports.DjangoRestConfig = DjangoRestConfig;
 
-},{"./fields":6}],2:[function(require,module,exports){
+},{"./fields":7}],2:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -83,9 +100,9 @@ var utils = require('../utils');
 var CharField = (function (_super) {
     __extends(CharField, _super);
     function CharField(options) {
+        _super.call(this, options);
         this.minLength = options.min_length;
         this.maxLength = options.max_length;
-        _super.call(this, options);
     }
     CharField.prototype.getExtraTemplateOptions = function () {
         return utils.smartExtend({}, {
@@ -101,8 +118,8 @@ exports.CharField = CharField;
 var TextField = (function (_super) {
     __extends(TextField, _super);
     function TextField(options) {
-        this.rows = 2;
         _super.call(this, options);
+        this.rows = 2;
     }
     TextField.prototype.getExtraTemplateOptions = function () {
         return utils.extend(_super.prototype.getExtraTemplateOptions.call(this), {
@@ -114,6 +131,20 @@ var TextField = (function (_super) {
     return TextField;
 })(CharField);
 exports.TextField = TextField;
+var RegexField = (function (_super) {
+    __extends(RegexField, _super);
+    function RegexField(options) {
+        _super.call(this, options);
+        this.pattern = options.pattern || this.pattern;
+    }
+    RegexField.prototype.getExtraTemplateOptions = function () {
+        return utils.extend(_super.prototype.getExtraTemplateOptions.call(this), {
+            pattern: this.pattern
+        });
+    };
+    return RegexField;
+})(CharField);
+exports.RegexField = RegexField;
 var EmailField = (function (_super) {
     __extends(EmailField, _super);
     function EmailField() {
@@ -146,8 +177,27 @@ var HiddenField = (function (_super) {
     return HiddenField;
 })(CharField);
 exports.HiddenField = HiddenField;
+var URLField = (function (_super) {
+    __extends(URLField, _super);
+    function URLField() {
+        _super.apply(this, arguments);
+        this.pattern = '(http|ftp|https):\/\/[\w-]+(\.[\w-]+)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?';
+    }
+    URLField.templateType = 'url';
+    return URLField;
+})(RegexField);
+exports.URLField = URLField;
+var IPAddressField = (function (_super) {
+    __extends(IPAddressField, _super);
+    function IPAddressField() {
+        _super.apply(this, arguments);
+        this.pattern = '^(?!0)(?!.*\.$)((1?\d?\d|25[0-5]|2[0-4]\d)(\.|$)){4}$';
+    }
+    return IPAddressField;
+})(RegexField);
+exports.IPAddressField = IPAddressField;
 
-},{"../utils":8,"./base":5}],3:[function(require,module,exports){
+},{"../utils":9,"./base":5}],3:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -158,8 +208,8 @@ var base = require('./base');
 var ChoiceField = (function (_super) {
     __extends(ChoiceField, _super);
     function ChoiceField(options) {
-        this.choices = options.choices;
         _super.call(this, options);
+        this.choices = options.choices;
     }
     ChoiceField.prototype.getExtraTemplateOptions = function () {
         var res = {}, options = [];
@@ -209,9 +259,9 @@ var utils = require('../utils');
 var NumericField = (function (_super) {
     __extends(NumericField, _super);
     function NumericField(options) {
+        _super.call(this, options);
         this.minValue = options.min_value;
         this.maxValue = options.max_value;
-        _super.call(this, options);
     }
     NumericField.prototype.getExtraTemplateOptions = function () {
         return utils.smartExtend({}, {
@@ -224,8 +274,38 @@ var NumericField = (function (_super) {
     return NumericField;
 })(base.Field);
 exports.NumericField = NumericField;
+var DecimalField = (function (_super) {
+    __extends(DecimalField, _super);
+    function DecimalField(options) {
+        _super.call(this, options);
+        this.maxDigits = options.max_digits;
+        this.decimalPlaces = options.decimal_places;
+    }
+    DecimalField.prototype.getExtraTemplateOptions = function () {
+        return utils.smartExtend(_super.prototype.getExtraTemplateOptions.call(this), {
+            maxlength: this.maxDigits
+        });
+    };
+    DecimalField.fieldType = 'input';
+    DecimalField.templateType = 'number';
+    return DecimalField;
+})(NumericField);
+exports.DecimalField = DecimalField;
+var FloatField = (function (_super) {
+    __extends(FloatField, _super);
+    function FloatField() {
+        _super.apply(this, arguments);
+    }
+    FloatField.prototype.getExtraTemplateOptions = function () {
+        return utils.smartExtend(_super.prototype.getExtraTemplateOptions.call(this), {
+            'step': 'any'
+        });
+    };
+    return FloatField;
+})(NumericField);
+exports.FloatField = FloatField;
 
-},{"../utils":8,"./base":5}],5:[function(require,module,exports){
+},{"../utils":9,"./base":5}],5:[function(require,module,exports){
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -290,7 +370,46 @@ var BooleanField = (function (_super) {
 })(Field);
 exports.BooleanField = BooleanField;
 
-},{"../utils":8}],6:[function(require,module,exports){
+},{"../utils":9}],6:[function(require,module,exports){
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var base = require('./base');
+var DateField = (function (_super) {
+    __extends(DateField, _super);
+    function DateField() {
+        _super.apply(this, arguments);
+    }
+    DateField.fieldType = 'input';
+    DateField.templateType = 'date';
+    return DateField;
+})(base.Field);
+exports.DateField = DateField;
+var TimeField = (function (_super) {
+    __extends(TimeField, _super);
+    function TimeField() {
+        _super.apply(this, arguments);
+    }
+    TimeField.fieldType = 'input';
+    TimeField.templateType = 'time';
+    return TimeField;
+})(base.Field);
+exports.TimeField = TimeField;
+var DateTimeField = (function (_super) {
+    __extends(DateTimeField, _super);
+    function DateTimeField() {
+        _super.apply(this, arguments);
+    }
+    DateTimeField.fieldType = 'input';
+    DateTimeField.templateType = 'datetime-local';
+    return DateTimeField;
+})(base.Field);
+exports.DateTimeField = DateTimeField;
+
+},{"./base":5}],7:[function(require,module,exports){
 var base_1 = require("./base");
 exports.Field = base_1.Field;
 exports.BooleanField = base_1.BooleanField;
@@ -300,13 +419,23 @@ exports.TextField = CharField_1.TextField;
 exports.EmailField = CharField_1.EmailField;
 exports.PasswordField = CharField_1.PasswordField;
 exports.HiddenField = CharField_1.HiddenField;
+var CharField_2 = require("./CharField");
+exports.RegexField = CharField_2.RegexField;
+exports.URLField = CharField_2.URLField;
+exports.IPAddressField = CharField_2.IPAddressField;
 var ChoiceField_1 = require("./ChoiceField");
 exports.SelectField = ChoiceField_1.SelectField;
 exports.RadioField = ChoiceField_1.RadioField;
 var NumericField_1 = require("./NumericField");
 exports.NumericField = NumericField_1.NumericField;
+exports.DecimalField = NumericField_1.DecimalField;
+exports.FloatField = NumericField_1.FloatField;
+var datetime_1 = require("./datetime");
+exports.DateField = datetime_1.DateField;
+exports.TimeField = datetime_1.TimeField;
+exports.DateTimeField = datetime_1.DateTimeField;
 
-},{"./CharField":2,"./ChoiceField":3,"./NumericField":4,"./base":5}],7:[function(require,module,exports){
+},{"./CharField":2,"./ChoiceField":3,"./NumericField":4,"./base":5,"./datetime":6}],8:[function(require,module,exports){
 var DjangoRestConfig_1 = require("./DjangoRestConfig");
 var Converter = (function () {
     function Converter(djangoRestMeta, fieldFactoryFn) {
@@ -325,16 +454,31 @@ var Converter = (function () {
         });
         return configObjects;
     };
-    ;
     return Converter;
 })();
 exports.Converter = Converter;
 exports.toFormlyFields = function toFormlyFieldsF(djangoRestMeta, fieldFactoryFn) {
+    console.log("toFormlyFields is deprecated, please use toFormly instead");
+    var converter = new Converter(djangoRestMeta, fieldFactoryFn);
+    return converter.convert();
+};
+exports.toFormly = function toFormlyF(djangoRestMeta, fieldFactoryFn) {
     var converter = new Converter(djangoRestMeta, fieldFactoryFn);
     return converter.convert();
 };
 
-},{"./DjangoRestConfig":1}],8:[function(require,module,exports){
+},{"./DjangoRestConfig":1}],9:[function(require,module,exports){
+/**
+ * angular-formly-rest utilities.
+ */
+/**
+ * Copy all of the properties in the source objects over to the destination
+ * object, and return the destination object.
+ *
+ * @param destination
+ * @param sources
+ * @returns {Object}
+ */
 function extend(destination) {
     var sources = [];
     for (var _i = 1; _i < arguments.length; _i++) {
@@ -348,6 +492,14 @@ function extend(destination) {
     return destination;
 }
 exports.extend = extend;
+/**
+ * Copy all non null properties in the source objects over to the destination
+ * object, and return the destination object.
+ *
+ * @param destination
+ * @param sources
+ * @returns {Object}
+ */
 function smartExtend(destination) {
     var sources = [];
     for (var _i = 1; _i < arguments.length; _i++) {
@@ -364,5 +516,5 @@ function smartExtend(destination) {
 }
 exports.smartExtend = smartExtend;
 
-},{}]},{},[7])(7)
+},{}]},{},[8])(8)
 });
